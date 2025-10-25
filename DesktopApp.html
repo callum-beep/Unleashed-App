@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Alma Cannabis Pending Orders</title>
+  <link rel="icon" type="image/x-icon" href="https://drive.google.com/thumbnail?id=1yXsau_pW9Kw7m-l5QMb7wQKKNdiqwCkf&sz=w32">
+  <style>
+    /* Monochrome theme */
+    :root{
+      --bg:#fafafa; --card:#ffffff; --ink:#111; --muted:#555;
+      --line:#e5e5e5;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; background:var(--bg); color:var(--ink);
+         font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
+
+    header{background:#000; color:#fff; padding:16px 22px; font-weight:800; font-size:18px;
+           display:flex; align-items:center; justify-content:space-between;}
+    .brand{letter-spacing:.3px}
+
+    .wrap{max-width:1280px; margin:24px auto; padding:0 20px; display:grid; grid-template-columns: 1fr 380px; gap:22px;}
+    @media (max-width: 1100px){ .wrap{grid-template-columns:1fr;} }
+
+    .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px;}
+    h1,h2{margin:0 0 10px 0}
+    p{margin:0 0 10px 0; color:var(--muted);}
+
+    .actions{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0}
+    button{
+      appearance:none; border:1px solid #000; background:#000; color:#fff;
+      padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:800; letter-spacing:.2px;
+      transition:filter .15s ease, transform .06s ease;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    button:hover{filter:brightness(1.1); transform:translateY(-1px)}
+    .btn-ghost{background:#fff; color:#000; border:1px solid #000;}
+    .btn-ghost:hover{filter:none; transform:none;}
+    .btn-success{background:#10b981; border-color:#10b981;}
+
+    .status{margin-top:12px; border:1px dashed var(--line); border-radius:8px; padding:10px; font-size:13px; color:#222; display:flex; align-items:center; gap:10px;}
+    .pill{border:1px solid #000; border-radius:999px; padding:2px 8px; font-weight:900; font-size:11px; background:#fff;}
+    .loader{width:16px; height:16px; border:2px solid #ccc; border-top:2px solid #000; border-radius:50%; animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:6px 0 10px}
+    select, input[type="text"]{
+      border:1px solid #000; border-radius:6px; padding:8px 10px; font:inherit; background:#fff; color:#000;
+    }
+
+    table{width:100%; border-collapse:collapse; font-size:13px;}
+    thead th{position:sticky; top:0; background:#fff; border-bottom:2px solid #000; text-align:left; padding:10px;}
+    tbody td{border-bottom:1px solid var(--line); padding:8px 10px; white-space:nowrap;}
+    tbody tr:hover{background:#f5f5f5;}
+    .table-wrap{border:1px solid var(--line); border-radius:10px; overflow:auto; max-height:520px; background:#fff;}
+
+    .toast{position:fixed; right:16px; bottom:16px; background:#000; color:#fff; padding:10px 14px; border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.25);
+           opacity:0; transform:translateY(8px); transition:.22s ease; pointer-events:none; font-size:12px; z-index:1000;}
+    .toast.show{opacity:1; transform:translateY(0)}
+
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal h3 {
+      margin: 0 0 15px 0;
+      color: #000;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .modal-buttons button {
+      padding: 8px 16px;
+    }
+    .btn-danger {
+      background: #d32f2f;
+      border-color: #d32f2f;
+    }
+    .btn-danger:hover {
+      background: #b71c1c;
+      border-color: #b71c1c;
+    }
+    .order-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    .order-item {
+      padding: 4px 0;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    /* Create Order Styles */
+    #createOrderPage { display: none; }
+    .form-grid{display:grid; gap:20px;}
+    .form-section{border:1px solid var(--line); border-radius:8px; padding:20px;}
+    .form-group{margin-bottom:16px; position:relative;}
+    label{display:block; margin-bottom:6px; font-weight:600; color:var(--muted); font-size:14px;}
+    .required:after{content:" *"; color:#ef4444;}
+    
+    .create-order-input, .create-order-select, .create-order-textarea{
+      width:100%; border:1px solid var(--line); border-radius:6px; padding:10px 12px;
+      font:inherit; background:#fff; color:#000;
+    }
+    .create-order-input:focus, .create-order-select:focus, .create-order-textarea:focus{
+      outline:none; border-color:#000;
+    }
+    
+    .search-results{
+      border:1px solid var(--line); border-radius:6px; margin-top:4px; max-height:150px;
+      overflow-y:auto; display:none; position:absolute; width:100%; background:white; z-index:100;
+      box-shadow:0 4px 12px rgba(0,0,0,0.1);
+    }
+    .search-item{padding:10px 12px; cursor:pointer; border-bottom:1px solid var(--line);}
+    .search-item:hover{background:#f5f5f5;}
+    .search-item:last-child{border-bottom:none;}
+    
+    .line-items{margin-top:20px;}
+    .line-item{display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:10px; align-items:end; margin-bottom:12px; padding:12px; background:#f8f9fa; border-radius:6px;}
+    .line-header{grid-template-columns:2fr 1fr 1fr auto; margin-bottom:8px; padding:0 12px; font-weight:600; font-size:12px; text-transform:uppercase; color:var(--muted);}
+    
+    .remove-line{background:#ef4444; border:none; color:white; padding:8px 12px; border-radius:4px; cursor:pointer;}
+    
+    .order-summary{background:#f8f9fa; padding:16px; border-radius:8px; margin-top:20px;}
+    .summary-row{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line);}
+    .summary-total{font-weight:800; font-size:18px; border-bottom:none; padding-top:12px;}
+
+    .search-loading {color: var(--muted); font-style: italic;}
+    .search-error {color: #ef4444; font-style: italic;}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <img src="https://drive.google.com/thumbnail?id=1yXsau_pW9Kw7m-l5QMb7wQKKNdiqwCkf&sz=w64" 
+           alt="Alma Cannabis Logo" 
+           style="height:32px; width:auto;" />
+      <div class="brand">Alma Cannabis Pending Orders</div>
+    </div>
+    <div><!-- no right link/text --></div>
+  </header>
+
+  <div class="wrap">
+    <!-- MAIN PAGE -->
+    <section class="card" id="mainPage">
+      <h2>Daily Tools</h2>
+      <p>Work with "Pending orders" and Unleashed.</p>
+
+      <div class="actions">
+        <button onclick="run('updateSalesOrders','🌱 Sales Orders updated')">🌱 Update Sales Orders</button>
+        <button onclick="run('exportParkedRowsAndEmail','🚚 Parked deliveries email sent')">🚚 Send Parked Deliveries Email</button>
+        <button onclick="run('updateRecentInvoices','🧾 Recent invoices updated')">🧾 Update Recent Invoices</button>
+        <button onclick="confirmCompleteInvoices()">✅ Complete Parked Orders</button>
+        <button onclick="showCreateOrderPage()">📝 Create New Order</button>
+      </div>
+
+      <div id="status" class="status"><span class="pill">READY</span> Standing by.</div>
+
+      <h2 style="margin-top:16px">Pending Orders</h2>
+      <div class="toolbar">
+        <label>Status:
+          <select id="filterStatus" onchange="loadOrders()">
+            <option value="all">All</option>
+            <option value="parked" selected>Parked</option>
+            <option value="backordered">Backordered</option>
+          </select>
+        </label>
+        <label>Search:
+          <input type="text" id="searchBox" placeholder="Type to filter…" oninput="applyClientFilter()" />
+        </label>
+        <button class="btn-ghost" onclick="loadOrders()">Refresh</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="ordersTable">
+          <thead id="ordersHead"></thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CREATE ORDER PAGE (Hidden by default) -->
+    <section class="card" id="createOrderPage">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="margin:0;">Create New Parked Order</h2>
+        <button class="btn-ghost" onclick="showMainPage()">← Back to Orders</button>
+      </div>
+      
+      <div class="form-grid">
+        <!-- Customer Section -->
+        <div class="form-section">
+          <h3>Customer Information</h3>
+          <div class="form-group">
+            <label class="required">Search Customer</label>
+            <input type="text" id="customerSearch" class="create-order-input" placeholder="Type customer name..." 
+                   oninput="debouncedSearchCustomer()" />
+            <div id="customerResults" class="search-results"></div>
+          </div>
+          
+          <div id="customerInfo" style="display:none;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+              <div class="form-group">
+                <label>Customer Code</label>
+                <input type="text" id="customerCode" class="create-order-input" readonly style="background:#f5f5f5;" />
+              </div>
+              <div class="form-group">
+                <label>Customer Name</label>
+                <input type="text" id="customerName" class="create-order-input" readonly style="background:#f5f5f5;" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order Details -->
+        <div class="form-section">
+          <h3>Order Details</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+            <div class="form-group">
+              <label class="required">Order Date</label>
+              <input type="date" id="orderDate" class="create-order-input" value="" />
+            </div>
+            <div class="form-group">
+              <label class="required">Warehouse</label>
+              <select id="warehouse" class="create-order-select">
+                <option value="BREATHLS">Breath Life Sciences</option>
+                <option value="MAIN">Main Warehouse</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Customer Reference</label>
+              <input type="text" id="customerRef" class="create-order-input" placeholder="Optional reference..." />
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Order Notes</label>
+            <textarea id="orderNotes" class="create-order-textarea" rows="3" placeholder="Special instructions..."></textarea>
+          </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="form-section">
+          <h3>Order Items</h3>
+          
+          <div class="line-items">
+            <div class="line-item line-header">
+              <div>Product</div>
+              <div>Quantity</div>
+              <div>Unit Price</div>
+              <div></div>
+            </div>
+            
+            <div id="lineItemsContainer">
+              <!-- Line items will be added here dynamically -->
+            </div>
+            
+            <button type="button" class="btn-ghost" onclick="addLineItem()" 
+                    style="margin-top:12px;">+ Add Product</button>
+          </div>
+        </div>
+
+        <!-- Order Summary -->
+        <div class="form-section">
+          <h3>Order Summary</h3>
+          <div class="order-summary">
+            <div class="summary-row">
+              <span>Status:</span>
+              <span><strong>Parked</strong></span>
+            </div>
+            <div class="summary-row">
+              <span>Pricing:</span>
+              <span>Will use customer pricing tiers</span>
+            </div>
+          </div>
+          
+          <div id="createOrderStatus" class="status">
+            <span class="pill">READY</span> Fill in order details above
+          </div>
+          
+          <div style="display:flex; gap:12px; margin-top:20px;">
+            <button class="btn-ghost" onclick="resetCreateOrderForm()">Clear Form</button>
+            <button class="btn-success" onclick="createOrder()" id="createOrderBtn">Create Parked Order</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: Summary -->
+    <aside class="card">
+      <h2>Summary</h2>
+      <div style="font-size:14px; line-height:1.6; color:#222">
+        <div>Last refresh: <strong id="s-refresh">—</strong></div>
+        <div>Status: <strong id="s-status">Ready</strong></div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button class="btn-ghost" onclick="ping()">Ping</button>
+        <button class="btn-ghost" onclick="updateRefreshTime()">Update Time</button>
+      </div>
+    </aside>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // ================= DEBUG VERSION =================
+    console.log('HTML Script loaded');
+    
+    // ================= PAGE NAVIGATION =================
+    function showCreateOrderPage() {
+      document.getElementById('mainPage').style.display = 'none';
+      document.getElementById('createOrderPage').style.display = 'block';
+      document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
+      resetCreateOrderForm();
+      // Add first line item automatically
+      addLineItem();
+    }
+
+    function showMainPage() {
+      document.getElementById('createOrderPage').style.display = 'none';
+      document.getElementById('mainPage').style.display = 'block';
+    }
+
+    // ================= CREATE ORDER FUNCTIONALITY =================
+    let customerSearchTimeout;
+    let productSearchTimeouts = {};
+
+    function debouncedSearchCustomer() {
+      const searchInput = document.getElementById('customerSearch');
+      const searchValue = searchInput ? searchInput.value : '';
+      console.log('debouncedSearchCustomer called, value:', searchValue);
+      
+      clearTimeout(customerSearchTimeout);
+      customerSearchTimeout = setTimeout(() => {
+        searchCustomers(searchValue);
+      }, 300);
+    }
+
+    function searchCustomers(searchValue) {
+      console.log('=== CUSTOMER SEARCH STARTED ===');
+      console.log('Search value received:', searchValue);
+      console.log('Type of search value:', typeof searchValue);
+      
+      const results = document.getElementById('customerResults');
+      if (!results) {
+        console.error('customerResults element not found!');
+        return;
+      }
+      
+      // Clear previous results immediately
+      results.innerHTML = '';
+      results.style.display = 'none';
+      
+      if (!searchValue || searchValue.trim().length < 2) {
+        console.log('Query too short, returning empty');
+        return;
+      }
+      
+      const trimmedSearch = searchValue.trim();
+      console.log('Making API call with:', trimmedSearch);
+      
+      results.innerHTML = '<div class="search-item search-loading">Searching customers...</div>';
+      results.style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(displayCustomerResults)
+        .withFailureHandler(displayCustomerError)
+        .searchCustomers(trimmedSearch);
+    }
+
+    function displayCustomerResults(result) {
+      console.log('displayCustomerResults called with:', result);
+      const results = document.getElementById('customerResults');
+      
+      if (result.ok && result.items && result.items.length > 0) {
+        console.log('Found customers:', result.items);
+        const html = result.items.map(c => {
+          const code = (c.CustomerCode || '').replace(/'/g, "\\'");
+          const name = (c.CustomerName || '').replace(/'/g, "\\'");
+          return `<div class="search-item" onclick="selectCustomer('${code}', '${name}')">
+                   <strong>${c.CustomerName}</strong><br>
+                   <small>Code: ${c.CustomerCode}</small>
+                 </div>`;
+        }).join('');
+        results.innerHTML = html;
+      } else {
+        console.log('No customers found or error');
+        results.innerHTML = '<div class="search-item search-loading">No customers found</div>';
+      }
+      results.style.display = 'block';
+    }
+
+    function displayCustomerError(error) {
+      console.error('Customer search error:', error);
+      const results = document.getElementById('customerResults');
+      results.innerHTML = '<div class="search-item search-error">Error searching customers</div>';
+      results.style.display = 'block';
+    }
+
+    function selectCustomer(code, name) {
+      console.log('Customer selected:', code, name);
+      document.getElementById('customerCode').value = code;
+      document.getElementById('customerName').value = name;
+      document.getElementById('customerSearch').value = name;
+      document.getElementById('customerResults').style.display = 'none';
+      document.getElementById('customerInfo').style.display = 'block';
+      updateCreateOrderStatus();
+    }
+
+    function debouncedSearchProducts(input) {
+      const searchValue = input ? input.value : '';
+      console.log('debouncedSearchProducts called with:', searchValue);
+      
+      const lineId = input.closest('.line-item').id;
+      clearTimeout(productSearchTimeouts[lineId]);
+      productSearchTimeouts[lineId] = setTimeout(() => {
+        searchProducts(input, searchValue);
+      }, 300);
+    }
+
+    function searchProducts(input, searchValue) {
+      console.log('searchProducts called with:', searchValue);
+      const search = String(searchValue || '').trim();
+      console.log('Product search value:', search);
+      const results = input.parentElement.querySelector('.search-results');
+      
+      if (!search || search.length < 2) {
+        results.style.display = 'none';
+        return;
+      }
+      
+      results.innerHTML = '<div class="search-item search-loading">Searching products...</div>';
+      results.style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler((result) => displayProductResults(result, input))
+        .withFailureHandler(() => displayProductError(input))
+        .searchProducts(search);
+    }
+
+    function displayProductResults(result, input) {
+      console.log('Product results:', result);
+      const results = input.parentElement.querySelector('.search-results');
+      
+      if (result.ok && result.items && result.items.length > 0) {
+        const html = result.items.map(p => {
+          const code = (p.ProductCode || '').replace(/'/g, "\\'");
+          const name = (p.ProductDescription || '').replace(/'/g, "\\'");
+          return `<div class="search-item" onclick="selectProduct(this, '${code}', '${name}')">
+                   <strong>${p.ProductDescription}</strong><br>
+                   <small>Code: ${p.ProductCode}</small>
+                 </div>`;
+        }).join('');
+        results.innerHTML = html;
+      } else {
+        results.innerHTML = '<div class="search-item search-loading">No products found</div>';
+      }
+      results.style.display = 'block';
+    }
+
+    function displayProductError(input) {
+      console.error('Product search error');
+      const results = input.parentElement.querySelector('.search-results');
+      results.innerHTML = '<div class="search-item search-error">Error searching products</div>';
+      results.style.display = 'block';
+    }
+
+    function selectProduct(element, code, name) {
+      console.log('Product selected:', code, name);
+      const lineItem = element.closest('.line-item');
+      const inputs = lineItem.querySelectorAll('input');
+      inputs[0].value = name;
+      inputs[0].setAttribute('data-product-code', code);
+      element.parentElement.style.display = 'none';
+      updateCreateOrderStatus();
+    }
+
+    let lineItemCount = 0;
+
+    function addLineItem() {
+      lineItemCount++;
+      const container = document.getElementById('lineItemsContainer');
+      const lineId = 'line-' + lineItemCount;
+      
+      const lineItem = document.createElement('div');
+      lineItem.className = 'line-item';
+      lineItem.id = lineId;
+      lineItem.innerHTML = `
+        <div>
+          <input type="text" class="create-order-input" placeholder="Search product..." 
+                 oninput="debouncedSearchProducts(this)" />
+          <div class="search-results"></div>
+        </div>
+        <div>
+          <input type="number" class="create-order-input" min="1" value="1" onchange="updateCreateOrderStatus()" />
+        </div>
+        <div>
+          <input type="text" class="create-order-input" value="Auto-priced" readonly style="background:#f5f5f5; color:#666;" />
+        </div>
+        <div>
+          <button type="button" class="remove-line" onclick="this.parentElement.parentElement.remove(); updateCreateOrderStatus();">×</button>
+        </div>
+      `;
+      
+      container.appendChild(lineItem);
+      updateCreateOrderStatus();
+    }
+
+    function collectLineItems() {
+      const items = [];
+      document.querySelectorAll('.line-item').forEach(item => {
+        const inputs = item.querySelectorAll('input');
+        const productInput = inputs[0];
+        const quantityInput = inputs[1];
+        
+        if (productInput.value && productInput.getAttribute('data-product-code') && quantityInput.value) {
+          items.push({
+            productCode: productInput.getAttribute('data-product-code'),
+            quantity: parseInt(quantityInput.value) || 1
+          });
+        }
+      });
+      return items;
+    }
+
+    function updateCreateOrderStatus() {
+      const status = document.getElementById('createOrderStatus');
+      const button = document.getElementById('createOrderBtn');
+      
+      const customerCode = document.getElementById('customerCode').value;
+      const lineItems = collectLineItems();
+      
+      if (!customerCode) {
+        status.innerHTML = '<span class="pill">INFO</span> Select a customer';
+        button.disabled = true;
+      } else if (lineItems.length === 0) {
+        status.innerHTML = '<span class="pill">INFO</span> Add at least one product';
+        button.disabled = true;
+      } else {
+        status.innerHTML = '<span class="pill">READY</span> Ready to create parked order';
+        button.disabled = false;
+      }
+    }
+
+    function resetCreateOrderForm() {
+      document.getElementById('lineItemsContainer').innerHTML = '';
+      document.getElementById('customerInfo').style.display = 'none';
+      document.getElementById('customerSearch').value = '';
+      document.getElementById('customerCode').value = '';
+      document.getElementById('customerName').value = '';
+      document.getElementById('customerRef').value = '';
+      document.getElementById('orderNotes').value = '';
+      document.getElementById('customerResults').style.display = 'none';
+      lineItemCount = 0;
+      addLineItem();
+      updateCreateOrderStatus();
+    }
+
+    function createOrder() {
+      const orderData = {
+        customerCode: document.getElementById('customerCode').value,
+        orderDate: document.getElementById('orderDate').value,
+        warehouseCode: document.getElementById('warehouse').value,
+        customerRef: document.getElementById('customerRef').value,
+        notes: document.getElementById('orderNotes').value,
+        lineItems: collectLineItems()
+      };
+
+      // Validate
+      if (!orderData.customerCode) {
+        toast('Please select a customer');
+        return;
+      }
+      if (orderData.lineItems.length === 0) {
+        toast('Please add at least one product');
+        return;
+      }
+
+      const status = document.getElementById('createOrderStatus');
+      const button = document.getElementById('createOrderBtn');
+      
+      status.innerHTML = '<span class="pill">RUN</span> <span class="loader"></span> Creating order...';
+      button.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(handleOrderCreated)
+        .withFailureHandler(handleOrderError)
+        .createParkedOrder(orderData);
+    }
+
+    function handleOrderCreated(result) {
+      const status = document.getElementById('createOrderStatus');
+      const button = document.getElementById('createOrderBtn');
+      
+      if (result.ok) {
+        status.innerHTML = `<span class="pill">OK</span> ${result.message}`;
+        toast(`Order created: ${result.orderNumber}`);
+        // Return to main page and refresh orders
+        setTimeout(() => {
+          showMainPage();
+          loadOrders();
+        }, 2000);
+      } else {
+        status.innerHTML = `<span class="pill">ERR</span> ${result.error}`;
+        button.disabled = false;
+        toast('Failed to create order: ' + result.error);
+      }
+    }
+
+    function handleOrderError(error) {
+      const status = document.getElementById('createOrderStatus');
+      const button = document.getElementById('createOrderBtn');
+      
+      status.innerHTML = `<span class="pill">ERR</span> Error creating order`;
+      button.disabled = false;
+      toast('Error creating order: ' + error);
+    }
+
+    // ================= EXISTING FUNCTIONALITY =================
+    function setStatus(kind, text){
+      const box = document.getElementById('status');
+      let pill = 'INFO', body = text || '';
+      if (kind === 'run') { pill='RUN'; body = '<span class="loader"></span> ' + (text || 'Working…'); }
+      if (kind === 'ok')  { pill='OK';  }
+      if (kind === 'err') { pill='ERR'; }
+      box.innerHTML = `<span class="pill">${pill}</span> ${body}`;
+    }
+    
+    function toast(msg){
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(window.__t); window.__t = setTimeout(()=>t.classList.remove('show'), 2200);
+    }
+
+    function run(fn, okMsg){
+      setStatus('run', 'Running ' + fn + ' …');
+      google.script.run
+        .withSuccessHandler((ret) => {
+          const msg = (ret && ret.message) ? ret.message : (okMsg || 'Done');
+          setStatus('ok', msg);
+          toast(msg);
+          updateRefreshTime();
+          loadOrders();
+        })
+        .withFailureHandler(err => {
+          const m = err && err.message ? err.message : 'Unexpected error';
+          setStatus('err', m);
+          toast('Error: ' + m);
+        })
+        [fn]();
+    }
+
+    function ping(){
+      setStatus('run','Pinging…');
+      google.script.run
+        .withSuccessHandler(d => { 
+          setStatus('ok', 'Ping OK'); 
+          toast('Ping OK'); 
+          updateRefreshTime();
+        })
+        .withFailureHandler(err => { 
+          const m = err && err.message ? err.message : 'Ping failed'; 
+          setStatus('err', m); 
+          toast('Error: ' + m); 
+        })
+        ._webPing();
+    }
+
+    function updateRefreshTime(){
+      document.getElementById('s-refresh').textContent = new Date().toLocaleString();
+      document.getElementById('s-status').textContent = 'Active';
+    }
+
+    function confirmCompleteInvoices() {
+      setStatus('run', 'Loading parked orders for confirmation...');
+      
+      google.script.run
+        .withSuccessHandler(data => {
+          const parkedOrders = data.rows || [];
+          if (parkedOrders.length === 0) {
+            setStatus('err', 'No parked orders found');
+            toast('No parked orders to complete');
+            return;
+          }
+          
+          const orderCount = parkedOrders.length;
+          const confirmMsg = `This will complete ${orderCount} parked order(s).\n\nAre you sure?`;
+          
+          if (confirm(confirmMsg)) {
+            run('completeInvoices', '✅ Completed parked orders');
+          } else {
+            setStatus('ok', 'Cancelled');
+            toast('Completion cancelled');
+          }
+        })
+        .withFailureHandler(err => {
+          setStatus('err', 'Failed to load orders');
+          toast('Error loading orders');
+        })
+        .appListPendingOrders({ status: 'parked', limit: 1000 });
+    }
+
+    let fullRows = [];
+    let headers = [];
+
+    function loadOrders(){
+      const status = document.getElementById('filterStatus').value || 'parked';
+      setStatus('run','Loading orders…');
+      google.script.run
+        .withSuccessHandler(data => {
+          headers = data.headers || [];
+          fullRows = data.rows || [];
+          renderTable(headers, fullRows);
+          setStatus('ok','Orders loaded');
+          updateRefreshTime();
+        })
+        .withFailureHandler(err => { 
+          const m = err && err.message ? err.message : 'Failed to load orders'; 
+          setStatus('err', m); 
+          toast('Error: ' + m); 
+        })
+        .appListPendingOrders({ status: status, limit: 1000 });
+    }
+
+    function renderTable(hs, rows){
+      const head = document.getElementById('ordersHead');
+      head.innerHTML = '';
+      const wanted = ['Order Number','Order Date','Order Status','Customer','Product Description','Quantity','Warehouse'];
+      const idx = wanted.map(w => ({ name:w, pos: hs.indexOf(w) })).filter(x => x.pos >= 0);
+
+      const trh = document.createElement('tr');
+      idx.forEach(col => {
+        const th = document.createElement('th'); th.textContent = col.name; trh.appendChild(th);
+      });
+      head.appendChild(trh);
+
+      const body = document.getElementById('ordersBody');
+      body.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        idx.forEach(col => {
+          const td = document.createElement('td');
+          let v = r[col.pos];
+          if (col.name === 'Order Date' && v && typeof v === 'object' && v.toLocaleDateString) v = v.toLocaleDateString();
+          td.textContent = v == null ? '' : v;
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+      applyClientFilter();
+    }
+
+    function applyClientFilter(){
+      const q = (document.getElementById('searchBox').value || '').toLowerCase().trim();
+      const body = document.getElementById('ordersBody');
+      if (!q) { Array.from(body.rows).forEach(row => row.style.display = ''); return; }
+      Array.from(body.rows).forEach(row => {
+        const text = Array.from(row.cells).map(td => td.textContent.toLowerCase()).join(' ');
+        row.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    // ================= INIT =================
+    updateRefreshTime();
+    loadOrders();
+  </script>
+</body>
+</html>
